@@ -21,7 +21,7 @@ protected:
     void copyFrom(T const *A, Rank lo, Rank hi); //复制数组区间A[lo, hi)
     void expand();                               //空间不足时扩容
     void shrink();                               //装填因子过小时压缩
-    bool bubble(Rank lo, Rank hi);               //扫描交换
+    int bubble(Rank lo, Rank hi);                //扫描交换
     void bubbleSort(Rank lo, Rank hi);           //起泡排序算法
     Rank max(Rank lo, Rank hi);                  //选取最大元素
     void selectionSort(Rank lo, Rank hi);        //选择排序算法
@@ -100,4 +100,181 @@ void Vector<T>::expand()
         _elem[_size] = old_elem[_size];
     }
     delete[] old_elem;
+}
+
+template <typename T>
+T &Vector<T>::operator[](Rank r)
+{
+    return _elem[r];
+}
+
+template <typename T>
+Rank Vector<T>::insert(Rank r, const T &e)
+{
+    expand() //需要则扩容
+        for (int i = _size; i > r; i--)
+    {
+        _elem[i] = _elem[i - 1];
+    }
+    _elem[r] = e;
+    _size++;
+    return r;
+}
+
+template <typename T>
+int Vector<T>::remove(Rank lo, Rank hi)
+{
+    if (lo == hi)
+        return 0;
+    while (hi < _size)
+        _elem[lo++] = _elem[hi++];
+    _size = lo;
+    shrink(); //空余空间太多，需要缩容
+    return hi - lo;
+}
+
+template <typename T>
+T Vector<T>::remove(Rank r)
+{
+    T ret = _elem[r];
+    remove(r, r + 1);
+    return ret;
+}
+
+//输入敏感，性能取决于输入的数据特征
+template <typename T>
+Rank Vector<T>::find(T const &e, Rank lo, Rank hi) const
+{
+    while ((lo < hi) && (_elem[--hi] != e))
+        ;
+    return hi;
+}
+
+//去重，返回删除元素的数目
+template <typename T>
+int Vector<T>::deduplicate()
+{
+    int oldsize = _size;
+    Rank i = 1;
+    while (i < _size)
+    {
+        find(_elem[i], 0, i) >= 0 ? remove(i) : i++;
+    }
+    return oldsize - _size;
+}
+
+//遍历（使用函数指针，只读或局部性修改）
+template <typename T>
+void Vector<T>::traverse(void (*visit)(T &))
+{
+    for (int i = 0; i < _size; i++)
+        visit(_elem[i]);
+}
+//遍历（使用函数对象，可全局性修改）
+template <typename T>
+template <typename VST>
+void Vector<T>::traverse(VST &visit)
+{
+    for (int i = 0; i < _size; i++)
+        visit(_elem[i]);
+}
+//有序向量去重，返回删除元素的数目
+template <typename T>
+int Vector<T>::uniquify()
+{
+    Rank oldsize = _size;
+    Rank lo = 0, hi = 0;
+    while (++hi < _size)
+    {
+        if (_elem[hi] != _elem[lo])
+            _elem[++lo] = _elem[hi]
+    }
+    _size = lo + 1;
+    shrink();
+    return oldsize - _size;
+}
+//有序向量区间查找
+template <typename T>
+Rank Vector<T>::search(T const &e, Rank lo, Rank hi) const
+{
+    return binarySearch(_elem, e, lo, hi);
+}
+
+//二分查找
+template <typename T>
+static Rank binarySearch(const T elem[], const T &e, Rank lo, Rank hi)
+{
+    while (lo < hi)
+    { //A[0,lo)<=e<A[hi,n)
+        Rank mid = hi + lo >> 1;
+        e < elem[mid] ? hi = mid : lo = mid + 1;
+    }
+    return --lo;
+}
+
+//起泡排序
+template <typename T>
+int Vector<T>::bubble(Rank lo, Rank hi)
+{
+    Rank last = lo;
+    while (hi > lo++)
+    {
+        if (_elem[lo] < _elem[lo - 1])
+        {
+            last = lo;
+            swap(_elem[lo], _elem[lo - 1]);
+        }
+    }
+    return last;
+}
+
+template <typename T>
+void Vector<T>::bubbleSort(Rank lo, Rank hi)
+{
+    while (lo < (hi = bubble(lo, hi)))
+        ;
+}
+
+//归并算法
+template <typename T>
+void Vector<T>::merge(Rank lo, Rank mi, Rank hi)
+{
+    T *A = _elem + lo;
+    T *B = new T[mi - lo];
+    T *C = _elem + mi;
+    for (Rank i = 0; i < mi - lo; i++)
+        B[i] = A[i];
+    Rank lb = mi - lo, lc = hi - mi;
+    Rank i = 0, j = 0, k = 0;
+    while (i < lb && j < lc)
+    {
+        if (B[i] < C[i])
+            A[k++] = B[i++];
+        else
+            A[k++] = C[j++];
+    }
+    if (j == lc)
+    {
+        while (i < lb)
+        {
+            A[k++] = B[j++];
+        }
+    }
+    // if (i == lb)
+    // {
+    //     while (j < lc)
+    //     {
+    //         A[k++] = C[j++];
+    //     }
+    // }
+}
+
+//归并排序算法
+template <typename T>
+void Vector<T>::mergeSort(Rank lo, Rank hi)
+{
+    Rank mid = (lo + hi) >> 1;
+    mergeSort(lo, mid);
+    mergeSort(mid, hi);
+    merge(lo, mid, hi);
 }
