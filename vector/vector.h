@@ -5,7 +5,8 @@
  * Computer Science & Technology, Tsinghua University
  * Copyright (c) 2003-2019. All rights reserved.
  ******************************************************************************************/
-
+// #include <iostream>
+// using namespace std;
 #pragma once
 
 typedef int Rank;          //秩
@@ -83,7 +84,7 @@ void Vector<T>::copyFrom(T const *A, Rank lo, Rank hi)
     _size = 0;
     while (lo < hi)
     {
-        _elem[size++] = A[lo++];
+        _elem[_size++] = A[lo++];
     }
 }
 // 容器扩容
@@ -92,12 +93,12 @@ void Vector<T>::expand()
 {
     if (_size < _capacity)
         return;
-    _capacity = max(_capacity, DEFAULT_CAPACITY);
+    if (_capacity < DEFAULT_CAPACITY) _capacity = DEFAULT_CAPACITY;
     T *old_elem = _elem;
-    _elem = new T[_capacity << 1];
-    while (--_size >= 0)
+    _elem = new T[_capacity <<= 1];//得是<<=
+    for (int i=0;i<_size;i++)
     {
-        _elem[_size] = old_elem[_size];
+        _elem[i] = old_elem[i];
     }
     delete[] old_elem;
 }
@@ -111,12 +112,13 @@ T &Vector<T>::operator[](Rank r)
 template <typename T>
 Rank Vector<T>::insert(Rank r, const T &e)
 {
-    expand() //需要则扩容
-        for (int i = _size; i > r; i--)
+    expand(); //需要则扩容
+    for (int i = _size; i > r; i--)
     {
         _elem[i] = _elem[i - 1];
     }
     _elem[r] = e;
+    // cout << 1 <<endl;
     _size++;
     return r;
 }
@@ -131,6 +133,13 @@ int Vector<T>::remove(Rank lo, Rank hi)
     _size = lo;
     shrink(); //空余空间太多，需要缩容
     return hi - lo;
+}
+template <typename T> void Vector<T>::shrink() { //装填因子过小时压缩向量所占空间
+   if ( _capacity < DEFAULT_CAPACITY << 1 ) return; //不致收缩到DEFAULT_CAPACITY以下
+   if ( _size << 2 > _capacity ) return; //以25%为界
+   T* oldElem = _elem;  _elem = new T[_capacity >>= 1]; //容量减半
+   for ( int i = 0; i < _size; i++ ) _elem[i] = oldElem[i]; //复制原向量内容
+   delete [] oldElem; //释放原空间
 }
 
 template <typename T>
@@ -186,20 +195,12 @@ int Vector<T>::uniquify()
     Rank lo = 0, hi = 0;
     while (++hi < _size)
     {
-        if (_elem[hi] != _elem[lo])
-            _elem[++lo] = _elem[hi]
+        if (_elem[hi] != _elem[lo]) _elem[++lo] = _elem[hi];
     }
     _size = lo + 1;
     shrink();
     return oldsize - _size;
 }
-//有序向量区间查找
-template <typename T>
-Rank Vector<T>::search(T const &e, Rank lo, Rank hi) const
-{
-    return binarySearch(_elem, e, lo, hi);
-}
-
 //二分查找
 template <typename T>
 static Rank binarySearch(const T elem[], const T &e, Rank lo, Rank hi)
@@ -211,7 +212,17 @@ static Rank binarySearch(const T elem[], const T &e, Rank lo, Rank hi)
     }
     return --lo;
 }
+//有序向量区间查找
+template <typename T>
+Rank Vector<T>::search(T const &e, Rank lo, Rank hi) const
+{
+    return binarySearch(_elem, e, lo, hi);
+}
 
+template <typename T> void swap ( T& a, T& b )
+{
+  T c(a); a=b; b=c;
+}
 //起泡排序
 template <typename T>
 int Vector<T>::bubble(Rank lo, Rank hi)
@@ -277,4 +288,13 @@ void Vector<T>::mergeSort(Rank lo, Rank hi)
     mergeSort(lo, mid);
     mergeSort(mid, hi);
     merge(lo, mid, hi);
+}
+
+template <typename T> void Vector<T>::sort ( Rank lo, Rank hi ) { //向量区间[lo, hi)排序
+
+   switch ( rand() % 2 ) {
+      case 1:  bubbleSort ( lo, hi ); break; //起泡排序
+      case 2:  mergeSort ( lo, hi ); break; //选择排序（习题）
+      default: mergeSort ( lo, hi ); break; //希尔排序（第14章）
+   } //随机选择算法以充分测试。实用时可视具体问题的特点灵活确定或扩充
 }
